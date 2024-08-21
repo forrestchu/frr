@@ -3105,6 +3105,7 @@ void zebra_nhg_install_kernel(struct nhg_hash_entry *nhe)
 {
 	struct nhg_connected *rb_node_dep = NULL;
 
+    int ret;
 	/* Resolve it first */
 	nhe = zebra_nhg_resolve(nhe);
 
@@ -3113,6 +3114,9 @@ void zebra_nhg_install_kernel(struct nhg_hash_entry *nhe)
 		zebra_nhg_install_kernel(rb_node_dep->nhe);
 	}
 
+    if (nhe->pic_nhe)
+		zebra_nhg_install_kernel(nhe->pic_nhe);
+
 	if (CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_VALID)
 	    && !CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_INSTALLED)
 	    && !CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_QUEUED)) {
@@ -3120,7 +3124,10 @@ void zebra_nhg_install_kernel(struct nhg_hash_entry *nhe)
 		if (!ZEBRA_NHG_CREATED(nhe))
 			nhe->type = ZEBRA_ROUTE_NHG;
 
-		int ret = dplane_nexthop_add(nhe);
+		if (CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_PIC_NHT) || !nhe->pic_nhe)
+			ret = dplane_nexthop_add(nhe);
+		else
+			ret = dplane_pic_context_add(nhe);
 
 		switch (ret) {
 		case ZEBRA_DPLANE_REQUEST_QUEUED:
@@ -3142,8 +3149,12 @@ void zebra_nhg_install_kernel(struct nhg_hash_entry *nhe)
 
 void zebra_nhg_uninstall_kernel(struct nhg_hash_entry *nhe)
 {
+	int ret = 0;
 	if (CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_INSTALLED)) {
-		int ret = dplane_nexthop_delete(nhe);
+		if (CHECK_FLAG(nhe->flags, NEXTHOP_GROUP_PIC_NHT) || !nhe->pic_nhe)
+			ret = dplane_nexthop_delete(nhe);
+		else
+			ret = dplane_pic_context_delete(nhe);
 
 		switch (ret) {
 		case ZEBRA_DPLANE_REQUEST_QUEUED:
@@ -3183,6 +3194,7 @@ void zebra_nhg_dplane_result(struct zebra_dplane_ctx *ctx)
 
 	switch (op) {
 	case DPLANE_OP_NH_DELETE:
+	case DPLANE_OP_PIC_CONTEXT_DELETE:
 		if (status != ZEBRA_DPLANE_REQUEST_SUCCESS)
 			flog_err(
 				EC_ZEBRA_DP_DELETE_FAIL,
@@ -3193,6 +3205,8 @@ void zebra_nhg_dplane_result(struct zebra_dplane_ctx *ctx)
 		break;
 	case DPLANE_OP_NH_INSTALL:
 	case DPLANE_OP_NH_UPDATE:
+	case DPLANE_OP_PIC_CONTEXT_INSTALL:
+	case DPLANE_OP_PIC_CONTEXT_UPDATE:
 		nhe = zebra_nhg_lookup_id(id);
 
 		if (!nhe) {

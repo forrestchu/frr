@@ -368,6 +368,9 @@ static void route_entry_attach_ref(struct route_entry *re,
 	re->nhe_id = new->id;
 	re->nhe_installed_id = 0;
 
+	if (new->pic_nhe)
+		re->pic_nhe_id = new->pic_nhe->id;
+	
 	zebra_nhg_increment_ref(new);
 }
 
@@ -383,6 +386,7 @@ int route_entry_update_nhe(struct route_entry *re,
 
 		re->nhe_id = 0;
 		re->nhe_installed_id = 0;
+		re->pic_nhe_id = 0;
 		re->nhe = NULL;
 		goto done;
 	}
