@@ -590,7 +590,8 @@ void nexthop_del_srv6_seg6local(struct nexthop *nexthop)
 }
 
 void nexthop_add_srv6_seg6(struct nexthop *nexthop,
-			   const struct in6_addr *segs)
+			   const struct in6_addr *segs,
+			   const struct in6_addr *segs_src)
 {
 	if (!segs)
 		return;
@@ -600,6 +601,9 @@ void nexthop_add_srv6_seg6(struct nexthop *nexthop,
 					   sizeof(struct nexthop_srv6));
 
 	nexthop->nh_srv6->seg6_segs = *segs;
+	if (segs_src) {
+        nexthop->nh_srv6->seg6_src = *segs_src;
+    }
 }
 
 void nexthop_del_srv6_seg6(struct nexthop *nexthop)
@@ -813,6 +817,7 @@ void nexthop_copy_no_recurse(struct nexthop *copy,
 	memcpy(&copy->src, &nexthop->src, sizeof(nexthop->src));
 	memcpy(&copy->rmap_src, &nexthop->rmap_src, sizeof(nexthop->rmap_src));
 	copy->rparent = rparent;
+	copy->nh_encap.vni = nexthop->nh_encap.vni;
 	if (nexthop->nh_label)
 		nexthop_add_labels(copy, nexthop->nh_label_type,
 				   nexthop->nh_label->num_labels,
@@ -826,7 +831,8 @@ void nexthop_copy_no_recurse(struct nexthop *copy,
 				&nexthop->nh_srv6->seg6local_ctx);
 		if (!sid_zero(&nexthop->nh_srv6->seg6_segs))
 			nexthop_add_srv6_seg6(copy,
-				&nexthop->nh_srv6->seg6_segs);
+				&nexthop->nh_srv6->seg6_segs,
+				&nexthop->nh_srv6->seg6_src);
 	}
 }
 
@@ -858,6 +864,40 @@ struct nexthop *nexthop_dup(const struct nexthop *nexthop,
 	struct nexthop *new = nexthop_new();
 
 	nexthop_copy(new, nexthop, rparent);
+	return new;
+}
+
+void nexthop_copy_no_context(struct nexthop *copy,
+			     const struct nexthop *nexthop,
+			     struct nexthop *rparent)
+{
+	copy->vrf_id = nexthop->vrf_id;
+	copy->ifindex = nexthop->ifindex;
+	copy->type = nexthop->type;
+	copy->flags = nexthop->flags;
+	copy->weight = nexthop->weight;
+
+	assert(nexthop->backup_num < NEXTHOP_MAX_BACKUPS);
+	copy->backup_num = nexthop->backup_num;
+	if (copy->backup_num > 0)
+		memcpy(copy->backup_idx, nexthop->backup_idx, copy->backup_num);
+
+	copy->srte_color = nexthop->srte_color;
+	memcpy(&copy->gate, &nexthop->gate, sizeof(nexthop->gate));
+	memcpy(&copy->src, &nexthop->src, sizeof(nexthop->src));
+	memcpy(&copy->rmap_src, &nexthop->rmap_src, sizeof(nexthop->rmap_src));
+	copy->rparent = rparent;
+
+	if (CHECK_FLAG(copy->flags, NEXTHOP_FLAG_RECURSIVE))
+		copy_nexthops_nocontext(&copy->resolved, nexthop->resolved, copy);
+	
+}
+
+struct nexthop *nexthop_dup_no_context(const struct nexthop *nexthop, struct nexthop *rparent)
+{
+	struct nexthop *new = nexthop_new();
+
+	nexthop_copy_no_context(new, nexthop, rparent);
 	return new;
 }
 

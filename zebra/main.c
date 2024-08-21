@@ -75,6 +75,8 @@ int graceful_restart;
 
 bool v6_rr_semantics = false;
 
+bool fpm_pic_nexthop = true;
+
 /* Receive buffer size for kernel control sockets */
 #define RCVBUFSIZE_MIN 4194304
 #ifdef HAVE_NETLINK

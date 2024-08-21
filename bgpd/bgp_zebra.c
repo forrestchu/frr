@@ -1321,6 +1321,7 @@ void bgp_zebra_announce(struct bgp_dest *dest, const struct prefix *p,
 	uint32_t ttl = 0;
 	uint32_t bos = 0;
 	uint32_t exp = 0;
+	bool src = false;
 
 	/* Don't try to install if we're not connected to Zebra or Zebra doesn't
 	 * know of this instance.
@@ -1537,6 +1538,14 @@ void bgp_zebra_announce(struct bgp_dest *dest, const struct prefix *p,
 
 			memcpy(&api_nh->seg6_segs, &sid_info->sid,
 			       sizeof(api_nh->seg6_segs));
+					
+			if (peer->status == Established && peer->su_local->sa.sa_family == AF_INET6){
+				memcpy(&api_nh->seg6_src, &peer->su_local->sin6.sin6_addr,
+						sizeof(api_nh->seg6_src));
+				src = true;
+				
+			}
+					
 
 			if (sid_info->transposition_len != 0) {
 				mpls_lse_decode(mpinfo->extra->label[0], &label,
@@ -1555,6 +1564,10 @@ void bgp_zebra_announce(struct bgp_dest *dest, const struct prefix *p,
 			}
 
 			SET_FLAG(api_nh->flags, ZAPI_NEXTHOP_FLAG_SEG6);
+			if(src){
+				SET_FLAG(api_nh->flags, ZAPI_NEXTHOP_FLAG_SEG6_SRC);
+				src = false;
+			}
 		}
 
 		valid_nh_count++;

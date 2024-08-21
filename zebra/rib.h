@@ -113,6 +113,9 @@ struct route_entry {
 	uint32_t nhe_id;
 	uint32_t nhe_installed_id;
 
+	uint32_t pic_nhe_id;
+	uint32_t pic_nhe_installed_id;
+
 	/* Tag */
 	route_tag_t tag;
 
@@ -625,6 +628,8 @@ extern void zebra_vty_init(void);
 extern pid_t pid;
 
 extern bool v6_rr_semantics;
+
+extern bool fpm_pic_nexthop;
 
 #ifdef __cplusplus
 }

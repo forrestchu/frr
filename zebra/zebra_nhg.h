@@ -104,7 +104,7 @@ struct nhg_hash_entry {
 	 * nhg(3)->nhg_dependents is 3 in the tree
 	 */
 	struct nhg_connected_tree_head nhg_depends, nhg_dependents;
-
+    struct nhg_hash_entry *pic_nhe;
 	struct thread *timer;
 
 /*
@@ -160,6 +160,9 @@ struct nhg_hash_entry {
  * Track FPM installation status..
  */
 #define NEXTHOP_GROUP_FPM (1 << 6)
+#define NEXTHOP_GROUP_PIC_NHT           (1 << 8)
+#define NEXTHOP_GROUP_PIC_NON_RECURSIVE (1 << 9)
+
 };
 
 /* Upper 4 bits of the NHG are reserved for indicating the NHG type */
@@ -317,11 +320,14 @@ extern int zebra_nhg_kernel_del(uint32_t id, vrf_id_t vrf_id);
 /* Find an nhe based on a nexthop_group */
 extern struct nhg_hash_entry *zebra_nhg_rib_find(uint32_t id,
 						 struct nexthop_group *nhg,
-						 afi_t rt_afi, int type);
+						 afi_t rt_afi, int type, bool pic);
 
 /* Find an nhe based on a route's nhe, used during route creation */
 struct nhg_hash_entry *
 zebra_nhg_rib_find_nhe(struct nhg_hash_entry *rt_nhe, afi_t rt_afi);
+extern bool zebra_pic_nhe_find(struct nhg_hash_entry **pic_nhe, /* return value */
+				   struct nhg_hash_entry *nhe,
+				   afi_t afi, bool from_dplane);
 
 
 /**

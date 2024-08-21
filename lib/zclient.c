@@ -1074,6 +1074,10 @@ int zapi_nexthop_encode(struct stream *s, const struct zapi_nexthop *api_nh,
 		stream_write(s, &api_nh->seg6_segs,
 			     sizeof(struct in6_addr));
 
+	if (CHECK_FLAG(nh_flags, ZAPI_NEXTHOP_FLAG_SEG6_SRC))
+		stream_write(s, &api_nh->seg6_src,
+			     sizeof(struct in6_addr));
+	
 done:
 	return ret;
 }
@@ -1442,6 +1446,10 @@ int zapi_nexthop_decode(struct stream *s, struct zapi_nexthop *api_nh,
 		STREAM_GET(&api_nh->seg6_segs, s,
 			   sizeof(struct in6_addr));
 
+	if (CHECK_FLAG(api_nh->flags, ZAPI_NEXTHOP_FLAG_SEG6_SRC))
+		STREAM_GET(&api_nh->seg6_src, s,
+			   sizeof(struct in6_addr));
+		
 	/* Success */
 	ret = 0;
 
@@ -1906,8 +1914,13 @@ struct nexthop *nexthop_from_zapi_nexthop(const struct zapi_nexthop *znh)
 		nexthop_add_srv6_seg6local(n, znh->seg6local_action,
 					   &znh->seg6local_ctx);
 
-	if (!sid_zero(&znh->seg6_segs))
-		nexthop_add_srv6_seg6(n, &znh->seg6_segs);
+	if (!sid_zero(&znh->seg6_segs)){
+		if (!sid_zero(&znh->seg6_src))
+			nexthop_add_srv6_seg6(n, &znh->seg6_segs, &znh->seg6_src);
+		else
+		    nexthop_add_srv6_seg6(n, &znh->seg6_segs, NULL);
+	}
+		
 
 	return n;
 }
@@ -1969,6 +1982,11 @@ int zapi_nexthop_from_nexthop(struct zapi_nexthop *znh,
 		if (!sid_zero(&nh->nh_srv6->seg6_segs)) {
 			SET_FLAG(znh->flags, ZAPI_NEXTHOP_FLAG_SEG6);
 			memcpy(&znh->seg6_segs, &nh->nh_srv6->seg6_segs,
+			       sizeof(struct in6_addr));
+		}
+		if (!sid_zero(&nh->nh_srv6->seg6_src)) {
+			SET_FLAG(znh->flags, ZAPI_NEXTHOP_FLAG_SEG6_SRC);
+			memcpy(&znh->seg6_src, &nh->nh_srv6->seg6_src,
 			       sizeof(struct in6_addr));
 		}
 	}
