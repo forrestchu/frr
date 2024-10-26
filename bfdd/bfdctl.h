@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "lib/bfd.h"
 
 /*
  * Auxiliary definitions
@@ -41,8 +42,9 @@ struct sockaddr_any {
 };
 
 #ifndef MAXNAMELEN
-#define MAXNAMELEN 32
+#define MAXNAMELEN 128
 #endif
+#define MAXALIASNAMELEN 256
 
 #define BPC_DEF_DETECTMULTIPLIER 3
 #define BPC_DEF_RECEIVEINTERVAL 300  /* milliseconds */
@@ -112,6 +114,10 @@ struct bfd_peer_cfg {
 	uint64_t bpc_remote_txinterval;
 	uint64_t bpc_remote_echointerval;
 	uint64_t bpc_lastevent;
+
+    vrf_id_t vrf_id;
+	char bfd_name[BFD_NAME_SIZE +1];
+	uint8_t bfd_name_len;
 };
 
 
