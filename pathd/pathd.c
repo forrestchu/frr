@@ -831,7 +831,7 @@ void srv6_refresh_policy_state(struct srte_policy *policy)
 			{
 				continue;
 			}
-			if ((CHECK_FLAG(policy->flags, F_POLICY_CONF_BFD) && policy->bfd_config) || candidate->bfd_name[0])
+			if ((CHECK_FLAG(policy->flags, F_POLICY_CONF_BFD) && policy->bfd_config))
 			{
 				if (candidate->status == SRTE_DETECT_UP || candidate->status == SRTE_DETECT_NONE )
 					cpath_up_count++;

@@ -350,7 +350,6 @@ struct srte_candidate {
 	/* Hooks delaying timer */
 	struct thread *hook_timer;
 	uint32_t weight;
-	char bfd_name[BFD_NAME_SIZE + 1];
 };
 
 RB_HEAD(srte_candidate_head, srte_candidate);
