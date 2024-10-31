@@ -1119,10 +1119,6 @@ bool bfd_protocol_integration_shutting_down(void)
 	return bsglobal.shutting_down;
 }
 
-void bfd_name_register(struct bfd_session_params *bsp) {
-	bsp->args.command = ZEBRA_BFD_DEST_REGISTER;
-	zclient_bfd_command(bsglobal.zc, &bsp->args);
-}
 /*
  * BFD automatic source selection
  *

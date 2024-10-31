@@ -113,6 +113,8 @@ int pathd_srte_segment_list_segment_v6_sid_value_destroy(
 	struct nb_cb_destroy_args *args);
 
 int pathd_srte_policy_candidate_path_weight_modify(struct nb_cb_modify_args *args);
+int pathd_srte_policy_candidate_path_bfd_name_modify(struct nb_cb_modify_args *args);
+int pathd_srte_policy_candidate_path_bfd_name_destroy(struct nb_cb_destroy_args *args);
 
 /* Optional 'apply_finish' callbacks. */
 void pathd_apply_finish(struct nb_cb_apply_finish_args *args);

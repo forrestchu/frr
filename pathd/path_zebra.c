@@ -244,14 +244,20 @@ void path_zebra_add_srv6_policy(struct srte_policy *policy,
             continue;
 		}
 
+		if (candidate->bfd_name[0] && candidate->status == SRTE_DETECT_DOWN)
+		{
+			continue;
+		}
+
 		if (CHECK_FLAG(candidate->flags, F_CANDIDATE_DELETED))
 		{
 			continue;
 		}
 		if (count < candidate_group->up_cpath_num)
 		{
-			zlog_info("collect UP cpath, color:%u, endpoint:%s, group:%u, cpath:%s, sidlist:%s",
-				zp.color, endpoint, candidate_group->preference, candidate->name, candidate->segment_list->name);
+			zlog_info("collect UP cpath, color:%u, endpoint:%s, group:%u, cpath:%s, sidlist:%s, bfd_name:%s",
+				zp.color, endpoint, candidate_group->preference, candidate->name, candidate->segment_list->name, candidate->bfd_name);
+
 			strlcpy(zp.srv6_tunnel.sidlists[count].sidlist_name, candidate->segment_list->name,
 				sizeof(zp.srv6_tunnel.sidlists[count].sidlist_name));
 			zp.srv6_tunnel.sidlists[count].weight = candidate->weight;

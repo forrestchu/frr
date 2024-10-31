@@ -484,7 +484,6 @@ extern bool bfd_protocol_integration_shutting_down(void);
  */
 extern int bfd_nht_update(const struct prefix *match,
 			  const struct zapi_route *route);
-extern void bfd_name_register(struct bfd_session_params *bsp) ;
 
 DECLARE_HOOK(sbfd_state_change_hook, (char *bfd_name, int state,int remote_cbit),(bfd_name, state));
 

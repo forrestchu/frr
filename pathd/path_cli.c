@@ -176,6 +176,10 @@ static void srte_policy_detail_display(struct srte_policy *policy, struct vty *v
 			char binding_bfd[128] = {0};
 			bool has_bfd = false;
 			binding_bfd[0] = '-';
+			if(candidate->bfd_name[0]){
+				has_bfd = true;
+				snprintf(binding_bfd, sizeof(binding_bfd), "sbfd echo");
+			}
 			vty_out(vty,
 				"       Candidate Name: %s  Type: %s  Segment-List: %s  Weight: %d  BindingBFD: %s  Status: %s\n",
 				candidate->name,
@@ -845,7 +849,7 @@ DEFPY_YANG(srte_policy_candidate_exp,
 DEFPY_YANG(srte_policy_candidate_expsrv6,
       srte_policy_candidate_expsrv6_cmd,
       "candidate-path preference (0-4294967295)$preference name WORD$name \
-	 explicit-srv6 segment-list WORD$list_name [weight$has_weight (1-4294967295)$weight_val]",
+	 explicit-srv6 segment-list WORD$list_name [weight$has_weight (1-4294967295)$weight_val] [bfd-name BFD$bfd_name]",
       "Segment Routing Policy Candidate Path\n"
       "Segment Routing Policy Candidate Path Preference\n"
       "Administrative Preference\n"
@@ -855,7 +859,9 @@ DEFPY_YANG(srte_policy_candidate_expsrv6,
       "List of SIDs\n"
       "Name of the Segment List\n"
 	  "Set Weight of Candidate Path\n"
-	  "Weight Value\n")
+	  "Weight Value\n"
+	  "Specify bfd session name\n"
+	  "bfd session name\n")
 {
 	char xpath[XPATH_MAXLEN + XPATH_CANDIDATE_BASELEN];
 	snprintf(xpath, sizeof(xpath),
@@ -874,6 +880,15 @@ DEFPY_YANG(srte_policy_candidate_expsrv6,
 	else
 	{
         nb_cli_enqueue_change(vty, "./weight", NB_OP_MODIFY, "1");
+	}
+
+	if (bfd_name)
+	{
+		nb_cli_enqueue_change(vty, "./bfd-name", NB_OP_MODIFY, bfd_name);
+	}
+	else
+	{
+		nb_cli_enqueue_change(vty, "./bfd-name", NB_OP_DESTROY, NULL);
 	}
 
 	return nb_cli_apply_changes(vty, "./candidate-path[preference='%s'][name='%s']",
@@ -1395,6 +1410,12 @@ void cli_show_srte_policy_candidate_path(struct vty *vty,
 	{
 		vty_out(vty, " segment-list %s",
 			yang_dnode_get_string(dnode, "segment-list-name"));
+		
+		if (yang_dnode_exists(dnode, "bfd-name"))
+		{
+			vty_out(vty, " bfd-name %s",
+				yang_dnode_get_string(dnode, "bfd-name"));
+		}
 	}
 	if (strmatch(type, "explicit-srv6"))
 	{

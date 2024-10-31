@@ -149,6 +149,7 @@ int main(int argc, char **argv, char **envp)
 	path_zebra_init(master);
 	path_cli_init();
 	path_ted_init(master);
+	sr_sbfd_init();
 
 	frr_config_fork();
 	frr_run(master);

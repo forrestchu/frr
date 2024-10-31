@@ -25,6 +25,7 @@ pathd_libpath_a_SOURCES = \
 	pathd/path_ted.c \
 	pathd/path_zebra.c \
 	pathd/pathd.c \
+	pathd/path_sbfd.c \
 	# end
 
 clippy_scan += \

@@ -231,6 +231,13 @@ const struct frr_yang_module_info frr_pathd_info = {
 			}
 		},
 		{
+			.xpath = "/frr-pathd:pathd/srte/policy/candidate-path/bfd-name",
+			.cbs = {
+				.destroy = pathd_srte_policy_candidate_path_bfd_name_destroy,
+				.modify = pathd_srte_policy_candidate_path_bfd_name_modify,
+			}
+		},
+		{
 			.xpath = "/frr-pathd:pathd/srte/policy/candidate-path/constraints/bandwidth",
 			.cbs = {
 				.create = dummy_create,

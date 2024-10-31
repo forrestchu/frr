@@ -39,6 +39,7 @@ DEFINE_MTYPE_STATIC(PATHD, PATH_SEGMENT_LIST, "Segment List");
 DEFINE_MTYPE_STATIC(PATHD, PATH_SR_POLICY, "SR Policy");
 DEFINE_MTYPE_STATIC(PATHD, PATH_SR_CANDIDATE, "SR Policy candidate path");
 DEFINE_MTYPE_STATIC(PATHD, PATH_SR_CANDIDATE_GROUP, "SR Policy candidate group");
+DEFINE_MTYPE_STATIC(PATHD, PATH_SR_CANDIDATE_BFD_GROUP, "SR Policy candidate bfd group");
 
 DEFINE_HOOK(pathd_candidate_created, (struct srte_candidate * candidate),
 	    (candidate));
@@ -121,12 +122,25 @@ static inline int srte_policy_candidate_compare(const struct srte_candidate *a,
 }
 RB_GENERATE(srte_candidate_head, srte_candidate, entry, srte_candidate_compare)
 RB_GENERATE(srte_candidate_pref_head, srte_candidate, perf_entry, srte_candidate_compare)
+RB_GENERATE(srte_candidate_bfd_head, srte_candidate, bfd_entry, srte_policy_candidate_compare)
+
 static inline int srte_candidate_group_compare(const struct srte_candidate_group *a,
 					 const struct srte_candidate_group *b)
 {
 	return a->preference - b->preference;
 }
 RB_GENERATE(srte_candidate_group_head, srte_candidate_group, entry, srte_candidate_group_compare)
+
+/* Generate rb-tree of Candidate sbfd Group instances. */
+static inline int srte_candidate_bfd_group_compare(const struct srte_candidate_bfd_group *a,
+					 const struct srte_candidate_bfd_group *b)
+{
+	return strcmp(a->bfd_name, b->bfd_name);
+}
+
+RB_GENERATE(srte_candidate_bfd_group_head, srte_candidate_bfd_group, entry, srte_candidate_bfd_group_compare)
+
+struct srte_candidate_bfd_group_head sbfd_groups = RB_INITIALIZER(&sbfd_groups);
 
 /* Generate rb-tree of SR Policy instances. */
 static inline int srte_policy_compare(const struct srte_policy *a,
@@ -824,14 +838,13 @@ void srv6_refresh_policy_state(struct srte_policy *policy)
 		{
 			zlog_debug("%s:  cpath (pref:%u, name:%s) has_bfd:%u status:%u.",
 					__func__, candidate->preference, candidate->name,
-					CHECK_FLAG(policy->flags, F_POLICY_CONF_BFD),
-					candidate->status);
+					candidate->bfd_name[0]?1: 0, candidate->status);
             if (!candidate->segment_list 
 			  || CHECK_FLAG(candidate->flags, F_CANDIDATE_DELETED))
 			{
 				continue;
 			}
-			if ((CHECK_FLAG(policy->flags, F_POLICY_CONF_BFD) && policy->bfd_config))
+			if (candidate->bfd_name[0])
 			{
 				if (candidate->status == SRTE_DETECT_UP || candidate->status == SRTE_DETECT_NONE )
 					cpath_up_count++;
@@ -1423,6 +1436,82 @@ srte_segment_entry_find(struct srte_segment_list *segment_list, uint32_t index)
 		       &search);
 }
 
+void srte_candidate_bfd_group_add_with_status(const char *bfd_name,
+	enum detection_status status)
+{
+	struct srte_candidate_bfd_group* group = NULL;
+	group = XCALLOC(MTYPE_PATH_SR_CANDIDATE_BFD_GROUP, sizeof(*group));
+
+	group->cpath_num = 0;
+	group->status = status;
+	strncpy(group->bfd_name, bfd_name, sizeof(group->bfd_name));
+
+	RB_INIT(srte_candidate_bfd_head, &group->candidate_paths);
+
+	RB_INSERT(srte_candidate_bfd_group_head, &sbfd_groups, group);
+}
+struct srte_candidate_bfd_group *srte_candidate_bfd_group_add(const char *bfd_name, 
+                        struct srte_candidate *candidate)
+{
+    struct srte_candidate_bfd_group search = {0};
+	struct srte_candidate_bfd_group* group = NULL;
+
+	strncpy(search.bfd_name, bfd_name, BFD_NAME_SIZE);
+
+	group = RB_FIND(srte_candidate_bfd_group_head, &sbfd_groups, &search);
+	if(!group)
+	{
+		group = XCALLOC(MTYPE_PATH_SR_CANDIDATE_BFD_GROUP, sizeof(*group));
+
+        group->cpath_num = 0;
+        group->status = SRTE_DETECT_NONE;
+        strncpy(group->bfd_name, bfd_name, BFD_NAME_SIZE);
+
+        RB_INIT(srte_candidate_bfd_head, &group->candidate_paths);
+
+        RB_INSERT(srte_candidate_bfd_group_head, &sbfd_groups, group);
+
+	}
+	else
+	{
+		//already added
+		if(RB_FIND(srte_candidate_bfd_head, &group->candidate_paths, candidate) != NULL){
+			return group;
+		}
+	}
+
+	//add and return
+	RB_INSERT(srte_candidate_bfd_head, &group->candidate_paths, candidate);
+	group->cpath_num += 1;
+	candidate->status = group->status;
+}
+
+void srte_candidate_bfd_group_del(const char *bfd_name, struct srte_candidate *candidate)
+{
+	struct srte_candidate_bfd_group search = {0};
+	struct srte_candidate_bfd_group* group = NULL;
+
+	strncpy(search.bfd_name, bfd_name, BFD_NAME_SIZE);
+
+	group = RB_FIND(srte_candidate_bfd_group_head, &sbfd_groups, &search);
+	if(!group){
+		return;
+	}
+
+	if(RB_FIND(srte_candidate_bfd_head, &group->candidate_paths, candidate) == NULL){
+		return;
+	}
+
+	RB_REMOVE(srte_candidate_bfd_head, &group->candidate_paths, candidate);
+	group->cpath_num -= 1;
+
+	// if (RB_EMPTY(srte_candidate_bfd_head, &group->candidate_paths))
+    // {
+    //     RB_REMOVE(srte_candidate_bfd_group_head, &sbfd_groups, group);
+    //     XFREE(MTYPE_PATH_SR_CANDIDATE_BFD_GROUP, group);
+    // }
+
+}
 /**
  * Updates a candidate status.
  *

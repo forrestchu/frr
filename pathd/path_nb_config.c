@@ -24,6 +24,9 @@
 
 #include "pathd/path_zebra.h"
 #include "pathd/path_nb.h"
+#include "lib/bfd.h"
+
+extern struct zclient *zclient;
 
 /*
  * XPath: /frr-pathd:pathd
@@ -915,5 +918,93 @@ int pathd_srte_policy_candidate_path_weight_modify(struct nb_cb_modify_args *arg
 
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
+	return NB_OK;
+}
+
+static int candidate_path_bfd_name_modify(struct nb_cb_modify_args *args)
+{
+	struct srte_candidate *candidate = NULL;
+	struct bfd_session_arg bs_arg;
+	memset(&bs_arg, 0, sizeof(struct bfd_session_arg));
+	candidate = nb_running_get_entry(args->dnode, NULL, true);
+
+	if(candidate && candidate->policy && CHECK_FLAG(candidate->policy->flags, F_POLICY_CONF_BFD)){
+		flog_warn(EC_LIB_NB_CB_CONFIG_VALIDATE,
+					"can't bind cpath to bfd_name, policy sbfd already enbled");
+        return NB_ERR;
+	}
+
+	//already bind to a bfd, del and rebind
+	if(candidate && candidate->bfd_name[0]){
+	    srte_candidate_bfd_group_del(candidate->bfd_name, candidate);
+	    candidate->bfd_name[0] = 0;
+	}
+
+	strlcpy(candidate->bfd_name, yang_dnode_get_string(args->dnode, NULL), BFD_NAME_SIZE);
+	strlcpy(bs_arg.bfd_name,candidate->bfd_name, BFD_NAME_SIZE);
+	bs_arg.family = AF_INET6;
+
+	if(srte_candidate_bfd_group_add(candidate->bfd_name, candidate) == NULL)
+	{
+		flog_warn(EC_LIB_NB_CB_CONFIG_VALIDATE,
+				"can't add sbfd group:%s for candidate!", candidate->bfd_name);
+		return NB_ERR;
+	}
+
+	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
+	//bfd_name_register(&bs_arg);
+
+	bs_arg.command = ZEBRA_BFD_DEST_REGISTER;
+	zclient_bfd_command(zclient, &bs_arg);
+	return NB_OK;
+}
+
+static int candidate_path_bfd_name_destroy(struct nb_cb_destroy_args *args)
+{
+	struct srte_candidate *candidate = NULL;
+
+	candidate = nb_running_get_entry(args->dnode, NULL, true);
+	if(candidate && candidate->bfd_name[0]){
+	    srte_candidate_bfd_group_del(candidate->bfd_name, candidate);
+	    candidate->bfd_name[0] = 0;
+	}
+
+	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
+	return NB_OK;
+}
+
+/*
+ * XPath: /frr-pathd:pathd/srte/policy/candidate-path/bfd-name
+ */
+int pathd_srte_policy_candidate_path_bfd_name_modify(
+	struct nb_cb_modify_args *args)
+{
+	switch (args->event) {
+	case NB_EV_VALIDATE:
+	case NB_EV_PREPARE:
+	case NB_EV_ABORT:
+		break;
+	case NB_EV_APPLY:
+		if (candidate_path_bfd_name_modify(args) != NB_OK)
+			return NB_ERR;
+
+		break;
+	}
+	return NB_OK;
+}
+
+int pathd_srte_policy_candidate_path_bfd_name_destroy(
+	struct nb_cb_destroy_args *args)
+{
+	switch (args->event) {
+	case NB_EV_VALIDATE:
+	case NB_EV_PREPARE:
+	case NB_EV_ABORT:
+		break;
+	case NB_EV_APPLY:
+		if (candidate_path_bfd_name_destroy(args) != NB_OK)
+			return NB_ERR;
+		break;
+	}
 	return NB_OK;
 }
