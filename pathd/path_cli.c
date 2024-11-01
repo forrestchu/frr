@@ -173,12 +173,12 @@ static void srte_policy_detail_display(struct srte_policy *policy, struct vty *v
 			cpath_group->up_cpath_num,
 			cpath_group->status == SRTE_DETECT_UP ? "UP" : "DOWN");
 		RB_FOREACH_SAFE (candidate, srte_candidate_pref_head, &cpath_group->candidate_paths, safe_cp) {
-			char binding_bfd[128] = {0};
+			char binding_bfd[256] = {0};
 			bool has_bfd = false;
 			binding_bfd[0] = '-';
 			if(candidate->bfd_name[0]){
 				has_bfd = true;
-				snprintf(binding_bfd, sizeof(binding_bfd), "sbfd echo");
+				snprintf(binding_bfd, sizeof(binding_bfd), "%s",candidate->bfd_name);
 			}
 			vty_out(vty,
 				"       Candidate Name: %s  Type: %d  Segment-List: %s  Weight: %d  BindingBFD: %s  Status: %s\n",
@@ -1410,12 +1410,6 @@ void cli_show_srte_policy_candidate_path(struct vty *vty,
 	{
 		vty_out(vty, " segment-list %s",
 			yang_dnode_get_string(dnode, "segment-list-name"));
-		
-		if (yang_dnode_exists(dnode, "bfd-name"))
-		{
-			vty_out(vty, " bfd-name %s",
-				yang_dnode_get_string(dnode, "bfd-name"));
-		}
 	}
 	if (strmatch(type, "explicit-srv6"))
 	{
@@ -1423,6 +1417,12 @@ void cli_show_srte_policy_candidate_path(struct vty *vty,
 			yang_dnode_get_string(dnode, "segment-list-name"));
 		vty_out(vty, " weight %s",
 			yang_dnode_get_string(dnode, "weight"));
+
+		if (yang_dnode_exists(dnode, "bfd-name"))
+		{
+			vty_out(vty, " bfd-name %s",
+				yang_dnode_get_string(dnode, "bfd-name"));
+		}
 	}
 	vty_out(vty, "\n");
 
