@@ -181,9 +181,9 @@ static void srte_policy_detail_display(struct srte_policy *policy, struct vty *v
 				snprintf(binding_bfd, sizeof(binding_bfd), "sbfd echo");
 			}
 			vty_out(vty,
-				"       Candidate Name: %s  Type: %s  Segment-List: %s  Weight: %d  BindingBFD: %s  Status: %s\n",
+				"       Candidate Name: %s  Type: %d  Segment-List: %s  Weight: %d  BindingBFD: %s  Status: %s\n",
 				candidate->name,
-				"explicit",
+				candidate->type,
 				candidate->segment_list ? candidate->segment_list->name : "-",
 				candidate->weight,
 				binding_bfd,

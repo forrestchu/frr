@@ -402,8 +402,10 @@ void srte_policy_del(struct srte_policy *policy)
 	struct srte_candidate *candidate;
 	if (CHECK_FLAG(policy->flags, F_POLICY_SRV6TE))
 		path_zebra_delete_srv6_policy(policy);
-	else
+	else {
+		path_zebra_delete_sr_policy(policy);
 		path_zebra_release_label(policy->binding_sid);
+	}
 
 	while (!RB_EMPTY(srte_candidate_head, &policy->candidate_paths)) {
 		candidate =
@@ -685,6 +687,9 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 	old_best_candidate = policy->best_candidate;
 	new_best_candidate = srte_policy_best_candidate(policy);
 
+	if (new_best_candidate->type == SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+		return;
+
 	if (new_best_candidate != old_best_candidate) {
 		PATH_POLICY_DEBUG(
 			"SR-TE(%s, %u): best candidate changed from %s to %s",
@@ -844,6 +849,9 @@ void srv6_refresh_policy_state(struct srte_policy *policy)
 			{
 				continue;
 			}
+			if (candidate->type != SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+				continue;
+
 			if (candidate->bfd_name[0])
 			{
 				if (candidate->status == SRTE_DETECT_UP || candidate->status == SRTE_DETECT_NONE )
@@ -881,10 +889,13 @@ void srv6_refresh_policy_state(struct srte_policy *policy)
 void srv6_policy_apply_changes(struct srte_policy *policy)
 {
 	struct srte_candidate *candidate, *safe;
+
     srv6_refresh_policy_state(policy);
 	srv6_choose_best_cpath_group(policy);
 	RB_FOREACH_SAFE (candidate, srte_candidate_head,
 			 &policy->candidate_paths, safe) {
+		if (candidate->type != SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+			continue;
 		if (CHECK_FLAG(candidate->flags, F_CANDIDATE_DELETED)) {
 			trigger_pathd_candidate_removed(candidate);
 			srte_candidate_del(candidate);

@@ -67,6 +67,8 @@ const char *srte_candidate_type_name(enum srte_candidate_type type)
 		return "DYNAMIC";
 	case SRTE_CANDIDATE_TYPE_UNDEFINED:
 		return "UNDEFINED";
+	case SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6:
+		return "EXPLICIT_SRV6";
 	default:
 		return "UNKNOWN";
 	}

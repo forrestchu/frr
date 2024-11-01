@@ -243,6 +243,8 @@ void path_zebra_add_srv6_policy(struct srte_policy *policy,
 		{
             continue;
 		}
+		if (candidate->type != SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+			continue;
 
 		if (candidate->bfd_name[0] && candidate->status == SRTE_DETECT_DOWN)
 		{
