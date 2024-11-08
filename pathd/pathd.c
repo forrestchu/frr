@@ -639,7 +639,7 @@ void srte_apply_changes(void)
 		}
 
 		if (CHECK_FLAG(policy->flags, F_POLICY_SRV6TE))
-        	srv6_policy_apply_changes(policy);
+			srv6_policy_apply_changes(policy);
 		else
 			srte_policy_apply_changes(policy);
 
@@ -687,8 +687,11 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 	old_best_candidate = policy->best_candidate;
 	new_best_candidate = srte_policy_best_candidate(policy);
 
-	if (new_best_candidate->type == SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+	if (new_best_candidate && new_best_candidate->type == SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
 		return;
+
+	if(old_best_candidate && old_best_candidate->type == SRTE_CANDIDATE_TYPE_EXPLICIT_SRV6)
+		return ;
 
 	if (new_best_candidate != old_best_candidate) {
 		PATH_POLICY_DEBUG(
